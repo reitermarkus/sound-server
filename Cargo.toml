@@ -1,0 +1,21 @@
+[package]
+name = "garage"
+version = "0.1.0"
+authors = ["Markus Reiter <me@reitermark.us>"]
+edition = "2018"
+
+[dependencies]
+simple-signal = "1"
+rppal = { version = "0.9", git = "https://github.com/reitermarkus/rppal", branch = "per-pin-api" }
+
+[lib]
+name = "garage"
+path = "src/lib.rs"
+
+[[bin]]
+name = "garage-speakers"
+path = "src/speakers/main.rs"
+
+[[bin]]
+name = "garage-door"
+path = "src/door/main.rs"
