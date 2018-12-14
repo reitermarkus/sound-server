@@ -46,6 +46,8 @@ if ! [ -f /etc/shairport-sync.conf.sample ]; then
   sudo cp /etc/shairport-sync.conf /etc/shairport-sync.conf.sample
 fi
 
+sudo adduser shairport-sync gpio
+
 cat <<CONFIG | sudo tee /etc/shairport-sync.conf
 general =
 {
