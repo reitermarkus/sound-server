@@ -1,0 +1,22 @@
+#!/bin/sh
+
+set -e
+set -o pipefail
+set -o nounset
+
+ip="${1}"
+
+
+TARGET='armv7-unknown-linux-gnueabihf'
+
+cross build --release --target "${TARGET}"
+
+rsync -avz "target/${TARGET}/release/" pi@"${ip}:/tmp/garage/"
+
+
+if ssh pi@"${ip}" ! [ -x "$(which shairport-sync)" ]; then
+  ssh pi@"${ip}" < setup_shairport.sh
+fi
+
+ssh pi@"${ip}" sudo cp -f /tmp/garage/garage-speakers /usr/local/bin/garage-speakers
+ssh pi@"${ip}" sudo cp -f /tmp/garage/garage-door /usr/local/bin/garage-door

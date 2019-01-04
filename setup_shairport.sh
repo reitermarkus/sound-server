@@ -1,8 +1,8 @@
 #!/bin/sh
 
 set -e
-set +o pipefail
-set +o nounset
+set -o pipefail
+set -o nounset
 
 # Turn off Wi-Fi power management.
 sudo iwconfig wlan0 power off
@@ -53,16 +53,11 @@ general =
 {
   name = "Garage";
 };
-CONFIG
 
-# This is only for testing the connection triggers.
-sudo apt-get install -y espeak
-
-cat <<CONFIG | sudo tee -a /etc/shairport-sync.conf
 sessioncontrol =
 {
-  run_this_before_play_begins = "/usr/bin/espeak -k3 'AirPlay activated.'";
-  run_this_after_play_ends = "/usr/bin/espeak -k3 'AirPlay deactivated.'";
+  run_this_before_play_begins = "/usr/local/bin/garage-speakers on";
+  run_this_after_play_ends = "/usr/local/bin/garage-speakers off";
   wait_for_completion = "yes";
 };
 CONFIG
