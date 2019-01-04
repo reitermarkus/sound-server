@@ -2,7 +2,7 @@
 name = "garage"
 version = "0.1.0"
 dependencies = [
- "rppal 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rppal 0.10.0 (git+https://github.com/golemparts/rppal?rev=3932b8eb97e714d2715f3929555a3a0653ea565e)",
  "simple-signal 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -13,7 +13,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "libc"
-version = "0.2.45"
+version = "0.2.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -23,18 +23,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rppal"
-version = "0.9.0"
-source = "git+https://github.com/reitermarkus/rppal?branch=per-pin-api#cb7eb784e2f5a7fdf15b573365c02ef21d74b7e5"
+version = "0.10.0"
+source = "git+https://github.com/golemparts/rppal?rev=3932b8eb97e714d2715f3929555a3a0653ea565e#3932b8eb97e714d2715f3929555a3a0653ea565e"
 dependencies = [
- "libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.46 (registry+https://github.com/rust-lang/crates.io-index)",
  "quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "rppal"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-replace = "rppal 0.9.0 (git+https://github.com/reitermarkus/rppal?branch=per-pin-api)"
 
 [[package]]
 name = "simple-signal"
@@ -42,13 +37,12 @@ version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.46 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [metadata]
 "checksum lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a374c89b9db55895453a74c1e38861d9deec0b01b405a82516e9d5de4820dea1"
-"checksum libc 0.2.45 (registry+https://github.com/rust-lang/crates.io-index)" = "2d2857ec59fadc0773853c664d2d18e7198e83883e7060b63c924cb077bd5c74"
+"checksum libc 0.2.46 (registry+https://github.com/rust-lang/crates.io-index)" = "023a4cd09b2ff695f9734c1934145a315594b7986398496841c7031a5a1bbdbd"
 "checksum quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9274b940887ce9addde99c4eee6b5c44cc494b182b97e73dc8ffdcb3397fd3f0"
-"checksum rppal 0.9.0 (git+https://github.com/reitermarkus/rppal?branch=per-pin-api)" = "<none>"
-"checksum rppal 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1154df4b7b87fdb9d0032c7af1b45f47247a4585b7ae71c06f2d3e1d152d3650"
+"checksum rppal 0.10.0 (git+https://github.com/golemparts/rppal?rev=3932b8eb97e714d2715f3929555a3a0653ea565e)" = "<none>"
 "checksum simple-signal 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "53f7da44adcc42667d57483bd93f81295f27d66897804b757573b61b6f13288b"

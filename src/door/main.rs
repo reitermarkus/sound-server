@@ -9,15 +9,11 @@ use garage::door::GarageDoor;
 fn main() {
   let gpio = Gpio::new().unwrap();
 
-  let mut pin1 = gpio.get(RELAY_PIN_1).unwrap();
-  let mut pin2 = gpio.get(RELAY_PIN_2).unwrap();
-  let mut pin3 = gpio.get(RELAY_PIN_3).unwrap();
+  let mut pin1 = gpio.get(RELAY_PIN_1).unwrap().into_output();
+  let mut pin2 = gpio.get(RELAY_PIN_2).unwrap().into_output();
+  let mut pin3 = gpio.get(RELAY_PIN_3).unwrap().into_output();
 
-  let mut output_pin1 = pin1.as_output();
-  let mut output_pin2 = pin2.as_output();
-  let mut output_pin3 = pin3.as_output();
-
-  let mut door = GarageDoor::new(&mut output_pin1, &mut output_pin2, &mut output_pin3);
+  let mut door = GarageDoor::new(&mut pin1, &mut pin2, &mut pin3);
 
   let args: Option<String> = env::args().nth(1);
 

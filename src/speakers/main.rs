@@ -14,18 +14,18 @@ fn main() {
 
   match args.as_ref().map(|s| s.as_str()) {
     Some("on") => {
-      let mut relay = pin14.as_output();
-      relay.set_clear_on_drop(false);
+      let mut relay = pin14.into_output();
+      relay.set_reset_on_drop(false);
       relay.set_low();
     },
     Some("off") => {
-      let mut relay = pin14.as_output();
-      relay.set_clear_on_drop(false);
+      let mut relay = pin14.into_output();
+      relay.set_reset_on_drop(false);
       relay.set_high();
     },
     Some("status") => {
       if pin14.mode() == Mode::Output {
-        match pin14.as_output().read() {
+        match pin14.into_output().read() {
           Level::Low => println!("on"),
           Level::High => println!("off"),
         }
