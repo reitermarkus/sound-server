@@ -24,38 +24,47 @@ struct Door {
 
 fn door_handler(mut state: State) -> Box<HandlerFuture>  {
   let f = Body::take_from(&mut state)
-      .concat2()
-      .then(|full_body| match full_body {
-          Ok(valid_body) => {
-              let body_content = String::from_utf8(valid_body.to_vec()).unwrap();
-              match body_content.as_str() {
-                "OPEN" => {
-                  println!("Opening door …");
+    .concat2()
+    .then(|res| match res {
+      Ok(body) => {
+        match String::from_utf8(body.to_vec()) {
+          Ok(content) => future::ok(content),
+          Err(err) => future::err(err.into_handler_error()),
+        }
+      },
+      Err(err) => future::err(err.into_handler_error()),
+    })
+    .then(|res| match res {
+      Ok(body) => {
+        match body.as_str() {
+          "OPEN" => {
+            println!("Opening door …");
 
-                  let mut door = Door::borrow_from(&state).inner.lock().unwrap();
-                  door.open();
-                },
-                "STOP" => {
-                  println!("Stopping door …");
-                  let mut door = Door::borrow_from(&state).inner.lock().unwrap();
-                  door.stop();
-                },
-                "CLOSE" => {
-                  println!("Closing door …");
+            let mut door = Door::borrow_from(&state).inner.lock().unwrap();
+            door.open();
+          },
+          "STOP" => {
+            println!("Stopping door …");
+            let mut door = Door::borrow_from(&state).inner.lock().unwrap();
+            door.stop();
+          },
+          "CLOSE" => {
+            println!("Closing door …");
 
-                  let mut door = Door::borrow_from(&state).inner.lock().unwrap();
-                  door.close();
-                },
-                _ => {
-                  let res = create_empty_response(&state, StatusCode::NOT_IMPLEMENTED);
-                  return future::ok((state, res))
-                },
-              }
-              let res = create_empty_response(&state, StatusCode::OK);
-              future::ok((state, res))
-          }
-          Err(e) => return future::err((state, e.into_handler_error())),
-      });
+            let mut door = Door::borrow_from(&state).inner.lock().unwrap();
+            door.close();
+          },
+          _ => {
+            let res = create_empty_response(&state, StatusCode::NOT_IMPLEMENTED);
+            return future::ok((state, res))
+          },
+        }
+
+        let res = create_empty_response(&state, StatusCode::OK);
+        future::ok((state, res))
+      }
+      Err(e) => future::err((state, e)),
+    });
 
   Box::new(f)
 }
