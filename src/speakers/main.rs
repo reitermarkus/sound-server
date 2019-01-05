@@ -3,29 +3,29 @@ use std::process::exit;
 
 use rppal::gpio::{Gpio, Mode, Level};
 
-use garage::RELAY_PIN_4;
+use garage::RELAY_IN4_PIN;
 
 fn main() {
   let gpio = Gpio::new().unwrap();
 
   let args: Option<String> = env::args().nth(1);
 
-  let mut pin14 = gpio.get(RELAY_PIN_4).unwrap();
+  let pin = gpio.get(RELAY_IN4_PIN).unwrap();
 
   match args.as_ref().map(|s| s.as_str()) {
     Some("on") => {
-      let mut relay = pin14.into_output();
+      let mut relay = pin.into_output();
       relay.set_reset_on_drop(false);
       relay.set_low();
     },
     Some("off") => {
-      let mut relay = pin14.into_output();
+      let mut relay = pin.into_output();
       relay.set_reset_on_drop(false);
       relay.set_high();
     },
     Some("status") => {
-      if pin14.mode() == Mode::Output {
-        match pin14.into_output().read() {
+      if pin.mode() == Mode::Output {
+        match pin.into_output().read() {
           Level::Low => println!("on"),
           Level::High => println!("off"),
         }

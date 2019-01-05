@@ -3,17 +3,17 @@ use std::process::exit;
 
 use rppal::gpio::Gpio;
 
-use garage::{RELAY_PIN_1, RELAY_PIN_2, RELAY_PIN_3};
-use garage::door::GarageDoor;
+use garage::{RELAY_IN1_PIN, RELAY_IN2_PIN, RELAY_IN3_PIN};
+use garage::GarageDoor;
 
 fn main() {
   let gpio = Gpio::new().unwrap();
 
-  let mut pin1 = gpio.get(RELAY_PIN_1).unwrap().into_output();
-  let mut pin2 = gpio.get(RELAY_PIN_2).unwrap().into_output();
-  let mut pin3 = gpio.get(RELAY_PIN_3).unwrap().into_output();
-
-  let mut door = GarageDoor::new(&mut pin1, &mut pin2, &mut pin3);
+  let mut door = GarageDoor::new(
+    gpio.get(RELAY_IN2_PIN).unwrap().into_output(),
+    gpio.get(RELAY_IN3_PIN).unwrap().into_output(),
+    gpio.get(RELAY_IN1_PIN).unwrap().into_output(),
+  );
 
   let args: Option<String> = env::args().nth(1);
 

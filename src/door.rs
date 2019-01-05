@@ -3,14 +3,14 @@ use std::thread::sleep;
 
 use rppal::gpio::OutputPin;
 
-pub struct GarageDoor<'a> {
-  s0: &'a mut OutputPin, // S0 - Taster HALT (normally closed)
-  s2: &'a mut OutputPin, // S2 - Taster AUF (normally open)
-  s4: &'a mut OutputPin, // S4 - Taster ZU (normally open)
+pub struct GarageDoor {
+  s0: OutputPin, // S0 - Taster HALT (normally closed)
+  s2: OutputPin, // S2 - Taster AUF (normally open)
+  s4: OutputPin, // S4 - Taster ZU (normally open)
 }
 
-impl<'a> GarageDoor<'a> {
-  pub fn new(s0: &'a mut OutputPin, s2: &'a mut OutputPin, s4: &'a mut OutputPin) -> GarageDoor<'a> {
+impl GarageDoor {
+  pub fn new(s0: OutputPin, s2: OutputPin, s4: OutputPin) -> GarageDoor {
     GarageDoor { s0, s2, s4 }
   }
 
