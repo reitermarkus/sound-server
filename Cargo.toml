@@ -23,7 +23,3 @@ path = "src/speakers/main.rs"
 [[bin]]
 name = "garage-door"
 path = "src/door/main.rs"
-
-[[bin]]
-name = "garage-api"
-path = "src/api/main.rs"

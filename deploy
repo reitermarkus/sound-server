@@ -21,6 +21,19 @@ fi
 
 ssh pi@"${ip}" sudo cp -f /tmp/garage/garage-speakers /usr/local/bin/garage-speakers
 ssh pi@"${ip}" sudo cp -f /tmp/garage/garage-door /usr/local/bin/garage-door
-ssh pi@"${ip}" sudo cp -f /tmp/garage/garage-api /usr/local/bin/garage-api
 
-ssh pi@"${ip}" -t sudo /usr/local/bin/garage-api
+cat <<CONFIG | ssh pi@"${ip}" sudo tee /etc/systemd/system/garage-door.service
+[Unit]
+Description=garage-door
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/garage-door
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+CONFIG
+
+ssh pi@"${ip}" sudo systemctl enable garage-door
+ssh pi@"${ip}" sudo systemctl restart garage-door

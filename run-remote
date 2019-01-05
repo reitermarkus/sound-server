@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+set -o nounset
+
+ip="${1}"
+
+./deploy "${ip}"
+
+ssh pi@"${ip}" -t journalctl -f -u garage-door.service
