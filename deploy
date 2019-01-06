@@ -10,7 +10,7 @@ TARGET='armv7-unknown-linux-gnueabihf'
 
 cross build --release --target "${TARGET}"
 
-rsync -avz "target/${TARGET}/release/" pi@"${ip}:/tmp/garage/"
+rsync -avz --include garage-door --include garage-speakers --exclude '*' "target/${TARGET}/release/" pi@"${ip}:/tmp/garage/"
 
 ssh pi@"${ip}" sudo timedatectl set-timezone Europe/Vienna
 echo 'garage' | ssh pi@"${ip}" sudo tee /etc/hostname
