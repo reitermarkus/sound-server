@@ -15,8 +15,12 @@ rsync -avz --include garage-door --include garage-speakers --exclude '*' "target
 ssh pi@"${ip}" sudo timedatectl set-timezone Europe/Vienna
 echo 'garage' | ssh pi@"${ip}" sudo tee /etc/hostname
 
-if ssh pi@"${ip}" ! [ -x "$(which shairport-sync)" ]; then
+if ssh pi@"${ip}" '! [ -f "$(which shairport-sync)" ]'; then
   ssh pi@"${ip}" < setup_shairport.sh
+fi
+
+if ssh pi@"${ip}" '! [ -f "$(which motion)" ]'; then
+  ssh pi@"${ip}" < setup_camera.sh
 fi
 
 ssh pi@"${ip}" sudo cp -f /tmp/garage/garage-speakers /usr/local/bin/garage-speakers
