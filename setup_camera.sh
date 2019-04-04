@@ -30,4 +30,8 @@ sudo sed -i -e 's/post_capture 0/post_capture 30/' /etc/motion/motion.conf
 
 sudo sed -i -e 's/start_motion_daemon=no/start_motion_daemon=yes/' /etc/default/motion
 
+cat <<CRONTAB | sudo tee /var/spool/cron/crontabs/root
+0 * * * * find /var/lib/motion -mtime +30 -exec rm -fv {} \;
+CRONTAB
+
 sudo service motion start
