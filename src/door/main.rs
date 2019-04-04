@@ -74,8 +74,8 @@ fn router() -> Router {
 
   let door = GarageDoor::new(
     gpio.get(RELAY_IN2_PIN).unwrap().into_output(),
-    gpio.get(RELAY_IN3_PIN).unwrap().into_output(),
     gpio.get(RELAY_IN1_PIN).unwrap().into_output(),
+    gpio.get(RELAY_IN3_PIN).unwrap().into_output(),
   );
 
   let middleware = StateMiddleware::new(Door { inner: Arc::new(Mutex::new(door)) });
