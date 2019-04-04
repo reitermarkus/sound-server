@@ -10,7 +10,11 @@ pub struct GarageDoor {
 }
 
 impl GarageDoor {
-  pub fn new(s0: OutputPin, s2: OutputPin, s4: OutputPin) -> GarageDoor {
+  pub fn new(mut s0:  OutputPin, mut s2: OutputPin, mut s4: OutputPin) -> GarageDoor {
+    s0.set_high();
+    s2.set_high();
+    s4.set_high();
+
     GarageDoor { s0, s2, s4 }
   }
 
