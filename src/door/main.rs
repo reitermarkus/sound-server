@@ -1,9 +1,10 @@
 use std::sync::{Arc, Mutex};
+use std::mem::drop;
 
 use futures::{future, Future, Stream};
 use gotham_derive::*;
 use gotham;
-use gotham::handler::{HandlerFuture, IntoHandlerError};
+use gotham::handler::{HandlerFuture, IntoResponse, IntoHandlerError};
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
@@ -14,7 +15,7 @@ use gotham::pipeline::single_middleware;
 use hyper::{Body, StatusCode};
 use rppal::gpio::Gpio;
 
-use garage::{RELAY_IN1_PIN, RELAY_IN2_PIN, RELAY_IN3_PIN};
+use garage::{INPUT_PIN, RELAY_IN1_PIN, RELAY_IN2_PIN, RELAY_IN3_PIN};
 use garage::GarageDoor;
 
 #[derive(Clone, StateData)]
@@ -22,7 +23,7 @@ struct Door {
   pub inner: Arc<Mutex<GarageDoor>>,
 }
 
-fn door_handler(mut state: State) -> Box<HandlerFuture>  {
+fn door_control_handler(mut state: State) -> Box<HandlerFuture>  {
   let f = Body::take_from(&mut state)
     .concat2()
     .then(|res| match res {
@@ -69,6 +70,17 @@ fn door_handler(mut state: State) -> Box<HandlerFuture>  {
   Box::new(f)
 }
 
+fn door_status_handler(state: State) -> Box<HandlerFuture> {
+  let mut door = Door::borrow_from(&state).inner.lock().unwrap();
+
+  let status = if door.is_closed() { "CLOSED" } else { "OPEN" };
+  let response = status.into_response(&state);
+
+  drop(door);
+
+  Box::new(future::ok((state, response)))
+}
+
 fn router() -> Router {
   let gpio = Gpio::new().unwrap();
 
@@ -76,6 +88,7 @@ fn router() -> Router {
     gpio.get(RELAY_IN2_PIN).unwrap().into_output(),
     gpio.get(RELAY_IN1_PIN).unwrap().into_output(),
     gpio.get(RELAY_IN3_PIN).unwrap().into_output(),
+    gpio.get(INPUT_PIN).unwrap().into_input_pullup(),
   );
 
   let middleware = StateMiddleware::new(Door { inner: Arc::new(Mutex::new(door)) });
@@ -86,7 +99,9 @@ fn router() -> Router {
 
   build_router(chain, pipelines, |route| {
     route.post("/door")
-         .to(door_handler);
+         .to(door_control_handler);
+
+    route.get("/door").to(door_status_handler)
   })
 }
 
