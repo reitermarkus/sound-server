@@ -25,9 +25,10 @@ fn main() {
     },
     Some("status") => {
       if pin.mode() == Mode::Output {
-        match pin.into_output().read() {
-          Level::Low => println!("on"),
-          Level::High => println!("off"),
+        if pin.into_output().is_set_low() {
+          println!("on") ;
+        } else {
+          println!("off");
         }
       } else {
         println!("unknown");
