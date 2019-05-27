@@ -1,7 +1,7 @@
 use std::env;
 use std::process::exit;
 
-use rppal::gpio::{Gpio, Mode, Level};
+use rppal::gpio::{Gpio, Mode};
 
 use garage::RELAY_IN4_PIN;
 
