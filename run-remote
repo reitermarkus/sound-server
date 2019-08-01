@@ -6,4 +6,4 @@ set -o nounset
 
 ip="${1}"
 
-ssh pi@"${ip}" -t journalctl -f -u garage-door.service
+ssh pi@"${ip}" -t journalctl -f -u garage.service

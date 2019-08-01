@@ -1,19 +1,23 @@
-use std::sync::{Arc, Mutex};
+use std::env;
 use std::mem::drop;
+use std::sync::{mpsc::channel, Arc, Mutex, RwLock};
+use std::thread;
 
+use cistern::Cistern;
 use futures::{future, Future, Stream};
 use gotham_derive::*;
 use gotham;
 use gotham::handler::{HandlerFuture, IntoResponse, IntoHandlerError};
 use gotham::router::builder::*;
-use gotham::router::Router;
 use gotham::state::{FromState, State};
-use gotham::helpers::http::response::create_empty_response;
+use gotham::helpers::http::response::{create_response, create_empty_response};
 use gotham::middleware::state::StateMiddleware;
-use gotham::pipeline::single::single_pipeline;
-use gotham::pipeline::single_middleware;
-use hyper::{Body, StatusCode};
+use gotham::pipeline::{new_pipeline, single::single_pipeline};
+use hyper::{Body, StatusCode, Response};
+use linux_embedded_hal::I2cdev;
 use rppal::gpio::Gpio;
+use serde_json::json;
+use simple_signal::Signal;
 
 use garage::{INPUT_PIN, RELAY_IN1_PIN, RELAY_IN2_PIN, RELAY_IN3_PIN};
 use garage::GarageDoor;
@@ -21,6 +25,11 @@ use garage::GarageDoor;
 #[derive(Clone, StateData)]
 struct Door {
   pub inner: Arc<Mutex<GarageDoor>>,
+}
+
+#[derive(Clone, StateData)]
+struct CisternState {
+  pub inner: Arc<RwLock<Cistern<I2cdev>>>,
 }
 
 fn door_control_handler(mut state: State) -> Box<HandlerFuture>  {
@@ -81,7 +90,34 @@ fn door_status_handler(state: State) -> Box<HandlerFuture> {
   Box::new(future::ok((state, response)))
 }
 
-fn router() -> Router {
+fn cistern_level_handler(state: State) -> (State, Response<Body>) {
+  let cistern = CisternState::borrow_from(&state).inner.read().unwrap();
+
+  let json = cistern.level().map(|(height, percent, volume)| {
+    json!({
+      "fill_height": height,
+      "percentage": percent * 100.0,
+      "volume": volume,
+    })
+  });
+
+  let response = create_response(
+    &state,
+    StatusCode::OK,
+    mime::APPLICATION_JSON,
+    serde_json::to_vec(&json).unwrap(),
+  );
+
+  drop(cistern);
+
+  (state, response)
+}
+
+fn main() {
+  let dev = I2cdev::new(env::var("I2C_DEVICE").expect("I2C_DEVICE is not set")).expect("Failed to open I2C device");
+
+  let cistern = Arc::new(RwLock::new(Cistern::new(dev)));
+
   let gpio = Gpio::new().unwrap();
 
   let door = GarageDoor::new(
@@ -91,22 +127,41 @@ fn router() -> Router {
     gpio.get(INPUT_PIN).unwrap().into_input_pullup(),
   );
 
-  let middleware = StateMiddleware::new(Door { inner: Arc::new(Mutex::new(door)) });
+  let door_middleware = StateMiddleware::new(Door { inner: Arc::new(Mutex::new(door)) });
+  let cistern_middleware = StateMiddleware::new(CisternState { inner: cistern.clone() });
 
-  let pipeline = single_middleware(middleware);
+  let pipeline = new_pipeline()
+    .add(door_middleware)
+    .add(cistern_middleware)
+    .build();
 
   let (chain, pipelines) = single_pipeline(pipeline);
 
-  build_router(chain, pipelines, |route| {
-    route.post("/door")
-         .to(door_control_handler);
+  thread::spawn(move || {
+    let (sig_tx, sig_rx) = channel();
 
-    route.get("/door").to(door_status_handler)
-  })
-}
+    simple_signal::set_handler(&[Signal::Int], move |_| {
+      sig_tx.send(true).unwrap();
+    });
 
-fn main() {
+    loop {
+      if sig_rx.try_recv().unwrap_or(false) {
+        break
+      }
+
+      if let Err(e) = cistern.write().unwrap().measure() {
+        eprintln!("Failed to measure: {:?}", e);
+      }
+    }
+
+    std::process::exit(1);
+  });
+
   let addr = "0.0.0.0:80";
   println!("Listening for requests at http://{}", addr);
-  gotham::start(addr, router())
+  gotham::start(addr, build_router(chain, pipelines, |route| {
+    route.post("/door").to(door_control_handler);
+    route.get("/door").to(door_status_handler);
+    route.get("/cistern").to(cistern_level_handler);
+  }))
 }

@@ -10,10 +10,11 @@ TARGET='armv7-unknown-linux-gnueabihf'
 
 cross build --release --target "${TARGET}"
 
-rsync -avz --include garage-door --include garage-speakers --exclude '*' "target/${TARGET}/release/" pi@"${ip}:/tmp/garage/"
+rsync -avz --include garage --include garage-speakers --exclude '*' "target/${TARGET}/release/" pi@"${ip}:/tmp/garage/"
 
 ssh pi@"${ip}" < setup_timezone.sh
 ssh pi@"${ip}" < setup_hostname.sh
+ssh pi@"${ip}" < setup_i2c.sh
 ssh pi@"${ip}" < setup_watchdog.sh
 
 if ssh pi@"${ip}" '! [ -f "$(which shairport-sync)" ]'; then
@@ -24,19 +25,21 @@ if ssh pi@"${ip}" '! [ -f "$(which motion)" ]'; then
   ssh pi@"${ip}" < setup_camera.sh
 fi
 
-ssh pi@"${ip}" sudo cp -f /tmp/garage/garage-speakers /usr/local/bin/garage-speakers
-ssh pi@"${ip}" sudo cp -f /tmp/garage/garage-door /usr/local/bin/garage-door
 
-cat <<CONFIG | ssh pi@"${ip}" sudo tee /etc/systemd/system/garage-door.service
+ssh pi@"${ip}" sudo mv -f /tmp/garage/garage-speakers /usr/local/bin/garage-speakers
+ssh pi@"${ip}" sudo mv -f /tmp/garage/garage /usr/local/bin/garage
+
+cat <<CONFIG | ssh pi@"${ip}" sudo tee /etc/systemd/system/garage.service
 [Unit]
-Description=garage-door
 StartLimitAction=reboot
 StartLimitIntervalSec=60
 StartLimitBurst=10
+Description=garage
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/garage-door
+Environment=I2C_DEVICE=/dev/i2c-1
+ExecStart=/usr/local/bin/garage
 Restart=always
 RestartSec=1
 
@@ -44,5 +47,5 @@ RestartSec=1
 WantedBy=multi-user.target
 CONFIG
 
-ssh pi@"${ip}" sudo systemctl enable garage-door
-ssh pi@"${ip}" sudo systemctl restart garage-door
+ssh pi@"${ip}" sudo systemctl enable garage
+ssh pi@"${ip}" sudo systemctl restart garage
