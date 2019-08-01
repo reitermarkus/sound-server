@@ -4,18 +4,18 @@ set -e
 set -o pipefail
 set -o nounset
 
+sudo raspi-config nonint do_camera 0
+
+if ! cat /etc/modules | grep -q bcm2835-v4l2; then
+  echo 'bcm2835-v4l2' | sudo tee -a /etc/modules
+fi
+
 sudo apt-get update
 
 sudo apt-get install -y motion
 
 if ! [ -f /etc/motion/motion.conf.sample ]; then
   sudo cp /etc/motion/motion.conf /etc/motion/motion.conf.sample
-fi
-
-sudo raspi-config nonint do_camera 0
-
-if ! cat /etc/modules | grep -q bcm2835-v4l2; then
-  echo 'bcm2835-v4l2' | sudo tee -a /etc/modules
 fi
 
 sudo sed -i -e 's/daemon off/daemon on/' /etc/motion/motion.conf

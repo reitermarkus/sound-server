@@ -12,8 +12,9 @@ cross build --release --target "${TARGET}"
 
 rsync -avz --include garage-door --include garage-speakers --exclude '*' "target/${TARGET}/release/" pi@"${ip}:/tmp/garage/"
 
-ssh pi@"${ip}" sudo timedatectl set-timezone Europe/Vienna
-echo 'garage' | ssh pi@"${ip}" sudo tee /etc/hostname
+ssh pi@"${ip}" < setup_timezone.sh
+ssh pi@"${ip}" < setup_hostname.sh
+ssh pi@"${ip}" < setup_watchdog.sh
 
 if ssh pi@"${ip}" '! [ -f "$(which shairport-sync)" ]'; then
   ssh pi@"${ip}" < setup_shairport.sh
@@ -29,11 +30,15 @@ ssh pi@"${ip}" sudo cp -f /tmp/garage/garage-door /usr/local/bin/garage-door
 cat <<CONFIG | ssh pi@"${ip}" sudo tee /etc/systemd/system/garage-door.service
 [Unit]
 Description=garage-door
+StartLimitAction=reboot
+StartLimitIntervalSec=60
+StartLimitBurst=10
 
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/garage-door
 Restart=always
+RestartSec=1
 
 [Install]
 WantedBy=multi-user.target
