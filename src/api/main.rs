@@ -79,36 +79,44 @@ fn door_control_handler(mut state: State) -> Box<HandlerFuture>  {
   Box::new(f)
 }
 
-fn door_status_handler(state: State) -> Box<HandlerFuture> {
-  let mut door = Door::borrow_from(&state).inner.lock().unwrap();
+fn door_status_handler(state: State) -> (State, Response<Body>) {
+  let response = {
+    let mut door = Door::borrow_from(&state).inner.lock().unwrap();
 
-  let status = if door.is_closed() { "CLOSED" } else { "OPEN" };
-  let response = status.into_response(&state);
+    let json = json!({
+      "status": if door.is_closed() { "closed" } else { "open" },
+    });
 
-  drop(door);
+    create_response(
+      &state,
+      StatusCode::OK,
+      mime::APPLICATION_JSON,
+      serde_json::to_vec(&json).unwrap(),
+    )
+  };
 
-  Box::new(future::ok((state, response)))
+  (state, response)
 }
 
 fn cistern_level_handler(state: State) -> (State, Response<Body>) {
-  let cistern = CisternState::borrow_from(&state).inner.read().unwrap();
+  let response = {
+    let cistern = CisternState::borrow_from(&state).inner.read().unwrap();
 
-  let json = cistern.level().map(|(height, percent, volume)| {
-    json!({
-      "fill_height": height,
-      "percentage": percent * 100.0,
-      "volume": volume,
-    })
-  });
+    let json = cistern.level().map(|(height, percent, volume)| {
+      json!({
+        "fill_height": height,
+        "percentage": percent * 100.0,
+        "volume": volume,
+      })
+    });
 
-  let response = create_response(
-    &state,
-    StatusCode::OK,
-    mime::APPLICATION_JSON,
-    serde_json::to_vec(&json).unwrap(),
-  );
-
-  drop(cistern);
+    create_response(
+      &state,
+      StatusCode::OK,
+      mime::APPLICATION_JSON,
+      serde_json::to_vec(&json).unwrap(),
+    )
+  };
 
   (state, response)
 }
