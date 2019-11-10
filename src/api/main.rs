@@ -1,5 +1,4 @@
 use std::env;
-use std::mem::drop;
 use std::sync::{mpsc::channel, Arc, Mutex, RwLock};
 use std::thread;
 
@@ -7,7 +6,7 @@ use cistern::Cistern;
 use futures::{future, Future, Stream};
 use gotham_derive::*;
 use gotham;
-use gotham::handler::{HandlerFuture, IntoResponse, IntoHandlerError};
+use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::router::builder::*;
 use gotham::state::{FromState, State};
 use gotham::helpers::http::response::{create_response, create_empty_response};
@@ -48,18 +47,18 @@ fn door_control_handler(mut state: State) -> Box<HandlerFuture>  {
       Ok(body) => {
         match body.as_str() {
           "OPEN" => {
-            println!("Opening door …");
+            log::info!("Opening door …");
 
             let mut door = Door::borrow_from(&state).inner.lock().unwrap();
             door.open();
           },
           "STOP" => {
-            println!("Stopping door …");
+            log::info!("Stopping door …");
             let mut door = Door::borrow_from(&state).inner.lock().unwrap();
             door.stop();
           },
           "CLOSE" => {
-            println!("Closing door …");
+            log::info!("Closing door …");
 
             let mut door = Door::borrow_from(&state).inner.lock().unwrap();
             door.close();
@@ -82,6 +81,8 @@ fn door_control_handler(mut state: State) -> Box<HandlerFuture>  {
 fn door_status_handler(state: State) -> (State, Response<Body>) {
   let response = {
     let mut door = Door::borrow_from(&state).inner.lock().unwrap();
+
+    log::info!("Getting door status …");
 
     let json = json!({
       "status": if door.is_closed() { "closed" } else { "open" },
@@ -122,6 +123,8 @@ fn cistern_level_handler(state: State) -> (State, Response<Body>) {
 }
 
 fn main() {
+  env_logger::init();
+
   let dev = I2cdev::new(env::var("I2C_DEVICE").expect("I2C_DEVICE is not set")).expect("Failed to open I2C device");
 
   let cistern = Arc::new(RwLock::new(Cistern::new(dev)));
@@ -166,7 +169,7 @@ fn main() {
   });
 
   let addr = "0.0.0.0:80";
-  println!("Listening for requests at http://{}", addr);
+
   gotham::start(addr, build_router(chain, pipelines, |route| {
     route.post("/door").to(door_control_handler);
     route.get("/door").to(door_status_handler);

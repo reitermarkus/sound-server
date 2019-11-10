@@ -39,6 +39,7 @@ Description=garage
 [Service]
 Type=simple
 Environment=I2C_DEVICE=/dev/i2c-1
+Environment=RUST_LOG=info
 ExecStart=/usr/local/bin/garage
 Restart=always
 RestartSec=1
