@@ -21,10 +21,7 @@ if ssh pi@"${ip}" '! [ -f "$(which shairport-sync)" ]'; then
   ssh pi@"${ip}" < setup_shairport.sh
 fi
 
-if ssh pi@"${ip}" '! [ -f "$(which motion)" ]'; then
-  ssh pi@"${ip}" < setup_camera.sh
-fi
-
+ssh pi@"${ip}" < setup_mjpeg_streamer.sh
 
 ssh pi@"${ip}" sudo mv -f /tmp/garage/garage-speakers /usr/local/bin/garage-speakers
 ssh pi@"${ip}" sudo mv -f /tmp/garage/garage /usr/local/bin/garage
