@@ -15,13 +15,13 @@ sudo apt-get install -y build-essential \
                         autoconf \
                         automake \
                         libtool \
-                        libdaemon-dev \
                         libpopt-dev \
                         libconfig-dev \
                         libasound2-dev \
                         avahi-daemon \
                         libavahi-client-dev \
-                        libssl-dev
+                        libssl-dev \
+                        libsoxr-dev
 
 # Uninstall previous version.
 sudo rm -f /usr/local/bin/shairport-sync
@@ -32,15 +32,12 @@ pushd /tmp
 git clone https://github.com/mikebrady/shairport-sync.git
 pushd shairport-sync
 autoreconf -fi
-./configure --sysconfdir=/etc --with-alsa --with-avahi --with-ssl=openssl --with-systemd
+./configure --sysconfdir=/etc --with-alsa --with-soxr --with-avahi --with-ssl=openssl --with-systemd
 make
 sudo make install
 popd
 rm -r shairport-sync
 popd
-
-sudo systemctl enable shairport-sync
-sudo systemctl start shairport-sync
 
 if ! [ -f /etc/shairport-sync.conf.sample ]; then
   sudo cp /etc/shairport-sync.conf /etc/shairport-sync.conf.sample
@@ -61,3 +58,6 @@ sessioncontrol =
   wait_for_completion = "yes";
 };
 CONFIG
+
+sudo systemctl enable shairport-sync
+sudo systemctl start shairport-sync
