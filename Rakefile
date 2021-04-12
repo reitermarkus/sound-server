@@ -130,12 +130,13 @@ end
 desc 'set up shairport'
 task :setup_shairport do
   sh 'ssh', HOST, <<~'SH'
+    set -euo pipefail
+
     # Turn off Wi-Fi power management.
     sudo iwconfig wlan0 power off
 
+    # Install dependencies.
     sudo apt-get update
-
-
     sudo apt-get install -y build-essential \
                             git \
                             xmltoman \
@@ -152,8 +153,8 @@ task :setup_shairport do
 
     # Uninstall previous version.
     sudo rm -f /usr/local/bin/shairport-sync
-    sudo rm -f /etc/systemd/system/shairport-sync.service
-    sudo rm -f /etc/init.d/shairport-sync
+    sudo rm -f /etc/systemd/system/shairport-sync*.service
+    sudo rm -f /etc/init.d/shairport-sync*
 
     pushd /tmp
     git clone https://github.com/mikebrady/shairport-sync.git
@@ -166,36 +167,78 @@ task :setup_shairport do
     rm -r shairport-sync
     popd
 
+    sudo cp -f /lib/systemd/system/shairport-sync.service /lib/systemd/system/shairport-sync@.service
+    sudo sed -i -E \
+      's|^(Description=.*Receiver)$|\1 (%I)|;s|^(ExecStart=/usr/local/bin/shairport-sync)$|\1 --use-stderr --verbose --configfile=/etc/shairport-sync-%I.conf\nSyslogIdentifier=shairport-sync-%I|' \
+      /lib/systemd/system/shairport-sync@.service
+
     if ! [ -f /etc/shairport-sync.conf.sample ]; then
       sudo cp /etc/shairport-sync.conf /etc/shairport-sync.conf.sample
     fi
 
     sudo adduser shairport-sync gpio
 
-    cat <<CONFIG | sudo tee /etc/shairport-sync.conf
-    general =
-    {
+    cat <<CONFIG | sudo tee /etc/shairport-sync-garage.conf
+    general = {
       name = "Garage";
+
+      port = 5001;
+
+      playback_mode = "mono";
     };
 
-    sessioncontrol =
-    {
+    sessioncontrol = {
       run_this_before_play_begins = "/usr/local/bin/garage-speakers on";
       run_this_after_play_ends = "/usr/local/bin/garage-speakers off";
       wait_for_completion = "yes";
     };
+
+    alsa = {
+      output_device = "hw:USB_Card_Garage";
+    };
     CONFIG
 
-    sudo systemctl enable shairport-sync
-    sudo systemctl start shairport-sync
+    cat <<CONFIG | sudo tee /etc/shairport-sync-garden.conf
+    general = {
+      name = "Garten";
+
+      port = 5002;
+
+      playback_mode = "mono";
+    };
+
+    sessioncontrol = {
+      run_this_before_play_begins = "/bin/true";
+      run_this_after_play_ends = "/bin/true";
+      wait_for_completion = "yes";
+    };
+
+    alsa = {
+      output_device = "hw:USB_Card_Garden";
+    };
+    CONFIG
+
+    sudo systemctl enable shairport-sync@garage
+    sudo systemctl enable shairport-sync@garden
+    sudo systemctl start shairport-sync@garden
+    sudo systemctl start shairport-sync@garage
   SH
 end
 
-desc 'set up soundcard'
-task :setup_soundcard do
-  sh 'ssh', HOST, "sudo sed -i 's/defaults.ctl.card 0/defaults.ctl.card 1/' /usr/share/alsa/alsa.conf"
-  sh 'ssh', HOST, "sudo sed -i 's/defaults.pcm.card 0/defaults.pcm.card 1/' /usr/share/alsa/alsa.conf"
-  sh 'ssh', HOST, 'amixer', 'sset', 'Speaker', '100%'
+desc 'set up sound card names'
+task :setup_soundcards do
+  r, w = IO.pipe
+
+  w.puts <<~CFG
+    ACTION=="add", SUBSYSTEM=="sound", ATTRS{idVendor}=="0d8c", ATTRS{idProduct}=="0014", KERNELS=="1-1.2", ATTR{id}="USB_Card_Garage"
+    ACTION=="add", SUBSYSTEM=="sound", ATTRS{idVendor}=="0d8c", ATTRS{idProduct}=="0014", KERNELS=="1-1.4", ATTR{id}="USB_Card_Garden"
+  CFG
+  w.close
+
+  sh 'ssh', HOST, 'sudo', 'tee', '/lib/udev/rules.d/85-usb-soundcard.rules', in: r
+
+  sh 'ssh', HOST, 'amixer', '-D', 'hw:USB_Card_Garage', 'sset', 'Speaker', '100%'
+  sh 'ssh', HOST, 'amixer', '-D', 'hw:USB_Card_Garden', 'sset', 'Speaker', '100%'
 end
 
 task :setup => [:setup_timezone, :setup_hostname, :setup_i2c, :setup_watchdog, :setup_mjpeg_streamer, :setup_shairport, :setup_soundcard]
