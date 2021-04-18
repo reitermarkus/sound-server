@@ -177,52 +177,63 @@ task :setup_shairport do
     fi
 
     sudo adduser shairport-sync gpio
-
-    cat <<CONFIG | sudo tee /etc/shairport-sync-garage.conf
-    general = {
-      name = "Garage";
-
-      port = 5001;
-
-      playback_mode = "mono";
-    };
-
-    sessioncontrol = {
-      run_this_before_play_begins = "/usr/local/bin/garage-speakers on";
-      run_this_after_play_ends = "/usr/local/bin/garage-speakers off";
-      wait_for_completion = "yes";
-    };
-
-    alsa = {
-      output_device = "hw:USB_Card_Garage";
-    };
-    CONFIG
-
-    cat <<CONFIG | sudo tee /etc/shairport-sync-garden.conf
-    general = {
-      name = "Garten";
-
-      port = 5002;
-
-      playback_mode = "mono";
-    };
-
-    sessioncontrol = {
-      run_this_before_play_begins = "/bin/true";
-      run_this_after_play_ends = "/bin/true";
-      wait_for_completion = "yes";
-    };
-
-    alsa = {
-      output_device = "hw:USB_Card_Garden";
-    };
-    CONFIG
-
-    sudo systemctl enable shairport-sync@garage
-    sudo systemctl enable shairport-sync@garden
-    sudo systemctl start shairport-sync@garden
-    sudo systemctl start shairport-sync@garage
   SH
+
+  [
+    ["Garage", "garage", "USB_Card_Garage", 5],
+    ["Garten", "garden", "USB_Card_Garden", 6],
+  ].each do |name, id, sound_card, gpio|
+    [
+      ["before", 0],
+      ["after", 1],
+    ].each do |trigger, value|
+      IO.pipe do |r, w|
+        w.puts <<~SH
+          #!/usr/bin/env bash
+
+          set -euo pipefail
+
+          [[ -e /sys/class/gpio/gpio#{gpio} ]] || echo #{gpio} > /sys/class/gpio/export
+          echo out > /sys/class/gpio/gpio#{gpio}/direction
+          echo #{value} > /sys/class/gpio/gpio#{gpio}/value
+        SH
+        w.close
+
+        sh 'ssh', HOST, 'sudo', 'tee', "/etc/shairport-sync-#{id}-#{trigger}.sh", in: r
+      end
+      sh 'ssh', HOST, 'sudo', 'chmod', '+x', "/etc/shairport-sync-#{id}-#{trigger}.sh"
+    end
+
+    IO.pipe do |r, w|
+      w.puts <<~CFG
+        general = {
+          name = "#{name}";
+
+          port = #{5000 + gpio};
+
+          playback_mode = "mono";
+        };
+
+        sessioncontrol = {
+          run_this_before_play_begins = "/etc/shairport-sync-#{id}-before.sh";
+          run_this_after_play_ends = "/etc/shairport-sync-#{id}-after.sh";
+          wait_for_completion = "yes";
+        };
+
+        alsa = {
+          output_device = "hw:#{sound_card}";
+        };
+      CFG
+      w.close
+
+      sh 'ssh', HOST, 'sudo', 'tee', "/etc/shairport-sync-#{id}.conf", in: r
+    end
+
+    sh 'ssh', HOST, <<~SH
+      sudo systemctl enable shairport-sync@#{id}
+      sudo systemctl start shairport-sync@#{id}
+    SH
+  end
 end
 
 desc 'set up sound card names'
@@ -247,7 +258,6 @@ desc 'deploy binary and service configuration to Raspberry Pi'
 task :deploy => :build  do
   sh 'rsync', '-z', '--rsync-path', 'sudo rsync', "target/#{TARGET}/release/garage", "#{HOST}:/usr/local/bin/garage"
   sh 'rsync', '-z', '--rsync-path', 'sudo rsync', "target/#{TARGET}/release/garage-speakers", "#{HOST}:/usr/local/bin/garage-speakers"
-
 
   r, w = IO.pipe
 
