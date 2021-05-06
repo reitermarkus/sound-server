@@ -142,12 +142,13 @@ task :setup_shairport do
                             xmltoman \
                             autoconf \
                             automake \
+                            avahi-daemon \
                             libtool \
                             libpopt-dev \
                             libconfig-dev \
                             libasound2-dev \
-                            avahi-daemon \
                             libavahi-client-dev \
+                            libmosquitto-dev \
                             libssl-dev \
                             libsoxr-dev
 
@@ -157,14 +158,15 @@ task :setup_shairport do
     sudo rm -f /etc/init.d/shairport-sync*
 
     pushd /tmp
-    git clone https://github.com/mikebrady/shairport-sync.git
-    pushd shairport-sync
+    rm -rf shairport-sync-build
+    git clone https://github.com/mikebrady/shairport-sync.git shairport-sync-build
+    pushd shairport-sync-build
     autoreconf -fi
-    ./configure --sysconfdir=/etc --with-alsa --with-avahi --with-ssl=openssl --with-metadata --with-soxr --with-systemd
+    ./configure --sysconfdir=/etc --with-alsa --with-avahi --with-ssl=openssl --with-metadata --with-soxr --with-systemd --with-mqtt-client
     make
     sudo make install
     popd
-    rm -r shairport-sync
+    rm -r shairport-sync-build
     popd
 
     sudo cp -f /lib/systemd/system/shairport-sync.service /lib/systemd/system/shairport-sync@.service
