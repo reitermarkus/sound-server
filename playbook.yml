@@ -15,6 +15,27 @@
         watchdog: on
       tags:
         - setup
+    - name: Set up soundcard devices
+      copy:
+        content: |
+          ACTION!="add", GOTO="end"
+          SUBSYSTEM!="sound", GOTO="end"
+          ATTRS{devpath}=="1.2", ATTR{id}="snd_usb_1_2", GOTO="end"
+          ATTRS{devpath}=="1.3", ATTR{id}="snd_usb_1_3", GOTO="end"
+          ATTRS{devpath}=="1.4", ATTR{id}="snd_usb_1_4", GOTO="end"
+          ATTRS{devpath}=="1.5", ATTR{id}="snd_usb_1_5", GOTO="end"
+          LABEL="end"
+        dest: /etc/udev/rules.d/85-usb-sound-card.rules
+      register: soundcard_rules
+      tags:
+        - build
+        - deploy
+    - name: Reload udev rules
+      when: soundcard_rules.changed
+      shell: udevadm control --reload && udevadm trigger --action=add
+      tags:
+        - build
+        - deploy
     - name: Install LXC
       include_role:
         name: reitermarkus.lxc.install
@@ -37,27 +58,6 @@
         id: AC530D520F2F3269F5E98313A48449044AAD5C5D
         url: https://ftp-master.debian.org/keys/archive-key-11-security.asc
         keyring: /var/cache/lxc/debian/archive-key.gpg
-    - name: Set up soundcard devices
-      copy:
-        content: |
-          ACTION!="add", GOTO="end"
-          SUBSYSTEM!="sound", GOTO="end"
-          ATTRS{devpath}=="1.2", ATTR{id}="snd_usb_1_2", GOTO="end"
-          ATTRS{devpath}=="1.3", ATTR{id}="snd_usb_1_3", GOTO="end"
-          ATTRS{devpath}=="1.4", ATTR{id}="snd_usb_1_4", GOTO="end"
-          ATTRS{devpath}=="1.5", ATTR{id}="snd_usb_1_5", GOTO="end"
-          LABEL="end"
-        dest: /etc/udev/rules.d/85-usb-sound-card.rules
-      register: soundcard_rules
-      tags:
-        - build
-        - deploy
-    - name: Reload udev rules
-      when: soundcard_rules.changed
-      shell: udevadm control --reload && udevadm trigger --action=add
-      tags:
-        - build
-        - deploy
     - name: Get authorized_keys
       shell: cat ~/.ssh/authorized_keys
       become: no
