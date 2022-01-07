@@ -20,10 +20,6 @@
         name: lxc
       tags:
         - setup
-    - name: Remove file
-      file:
-        path: /etc/udev/rules.d/85-usb-soundcard.rules
-        state: absent
     - name: Set up soundcard devices
       copy:
         content: |
