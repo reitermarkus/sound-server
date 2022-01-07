@@ -1,0 +1,125 @@
+---
+- name: Install dependencies
+  apt:
+    pkg:
+      - alsa-utils
+      - autoconf
+      - automake
+      - avahi-daemon
+      - build-essential
+      - ca-certificates
+      - git
+      - libtool
+      - uuid-dev
+      - xxd
+      - libasound2-dev
+      - libavahi-client-dev
+      - libavcodec-dev
+      - libavformat-dev
+      - libavutil-dev
+      - libconfig-dev
+      - libgcrypt-dev
+      - libmosquitto-dev
+      - libplist-dev
+      - libpopt-dev
+      - libsndfile1-dev
+      - libsodium-dev
+      - libsoxr-dev
+      - libssl-dev
+    update_cache: yes
+- name: Check if nqptp is up-to-date
+  shell: nqptp -V 2>/dev/null | grep -o "g$(git ls-remote "{{ nqptp_repo }}" "refs/heads/{{ nqptp_branch }}" | cut -c -7)"
+  register: nqptp_up_to_date
+  ignore_errors: true
+  failed_when: nqptp_up_to_date.stdout | length != 8
+  changed_when: nqptp_up_to_date.rc != 0
+- name: Check if shairport-sync is up-to-date
+  shell: shairport-sync -V 2>/dev/null | grep -o "g$(git ls-remote "{{ shairport_sync_repo }}" "refs/heads/{{ shairport_sync_branch }}" | cut -c -7)"
+  register: shairport_sync_up_to_date
+  ignore_errors: true
+  failed_when: shairport_sync_up_to_date.stdout | length != 8
+  changed_when: shairport_sync_up_to_date.rc != 0
+- name: Create build directory
+  tempfile:
+    state: directory
+  register: build_dir
+  when: nqptp_up_to_date.changed or shairport_sync_up_to_date.changed
+- name: Clone nqptp repo
+  git:
+    repo: '{{ nqptp_repo }}'
+    dest: '{{ build_dir.path }}/nqptp'
+    single_branch: yes
+    version: '{{ nqptp_branch }}'
+  when: nqptp_up_to_date.changed
+- name: Build nqptp
+  shell:
+    cmd: |
+      autoreconf -fi
+      ./configure
+      make -j
+      make install
+    chdir: '{{ build_dir.path }}/nqptp'
+  when: nqptp_up_to_date.changed
+- name: Enable nqptp service
+  service:
+    name: nqptp
+    enabled: true
+    state: started
+- name: Clone alac repo
+  git:
+    repo: '{{ alac_repo }}'
+    dest: '{{ build_dir.path }}/alac'
+    single_branch: yes
+    version: '{{ alac_branch }}'
+  when: shairport_sync_up_to_date.changed
+- name: Build libalac
+  shell:
+    cmd: |
+      autoreconf -fi
+      ./configure
+      make -j
+      make install
+    chdir: '{{ build_dir.path }}/alac'
+  when: shairport_sync_up_to_date.changed
+- name: Clone shairport-sync repo
+  git:
+    repo: '{{ shairport_sync_repo }}'
+    dest: '{{ build_dir.path }}/shairport-sync'
+    single_branch: yes
+    version: '{{ shairport_sync_branch }}'
+  when: shairport_sync_up_to_date.changed
+- name: Build shairport-sync
+  shell:
+    cmd: |
+      autoreconf -fi
+      ./configure \
+        --sysconfdir=/etc \
+        --with-alsa \
+        --with-airplay-2 \
+        --with-apple-alac \
+        --with-avahi \
+        --with-convolution \
+        --with-ssl=openssl \
+        --with-metadata \
+        --with-soxr \
+        --with-systemd \
+        --with-mqtt-client
+      make -j
+      make install
+    chdir: '{{ build_dir.path }}/shairport-sync'
+  when: shairport_sync_up_to_date.changed
+- name: Delete build directory
+  file:
+    path: '{{ build_dir.path }}'
+    state: absent
+  when: build_dir.path is defined
+- name: Configure shairport-sync
+  template:
+    src: shairport-sync.conf.j2
+    dest: /etc/shairport-sync.conf
+  register: config
+- name: Start or restart shairport-sync
+  service:
+    name: shairport-sync
+    enabled: true
+    state: '{{ "restarted" if (shairport_sync_up_to_date.changed or config.changed) else "started" }}'

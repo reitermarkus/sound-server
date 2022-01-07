@@ -1,0 +1,138 @@
+- name: Set up Raspberry Pi
+  hosts: raspberry_pi
+  become: yes
+  tasks:
+    - name: Install requirements
+      local_action: command ansible-galaxy install -r requirements.yml
+      become: no
+      tags:
+        - setup
+    - name: Setup
+      include_role:
+        name: reitermarkus.raspberry_pi.setup
+      vars:
+        timezone: Europe/Vienna
+        watchdog: on
+      tags:
+        - setup
+    - name: Install LXC
+      include_role:
+        name: lxc
+      tags:
+        - setup
+    - name: Remove file
+      file:
+        path: /etc/udev/rules.d/85-usb-soundcard.rules
+        state: absent
+    - name: Set up soundcard devices
+      copy:
+        content: |
+          ACTION!="add", GOTO="end"
+          SUBSYSTEM!="sound", GOTO="end"
+          ATTRS{devpath}=="1.2", ATTR{id}="snd_usb_1_2", GOTO="end"
+          ATTRS{devpath}=="1.3", ATTR{id}="snd_usb_1_3", GOTO="end"
+          ATTRS{devpath}=="1.4", ATTR{id}="snd_usb_1_4", GOTO="end"
+          ATTRS{devpath}=="1.5", ATTR{id}="snd_usb_1_5", GOTO="end"
+          LABEL="end"
+        dest: /etc/udev/rules.d/85-usb-sound-card.rules
+      register: soundcard_rules
+      tags:
+        - build
+        - deploy
+    - name: Reload udev rules
+      when: soundcard_rules.changed
+      shell: udevadm control --reload && udevadm trigger --action=add
+      tags:
+        - build
+        - deploy
+    - name: Get authorized_keys
+      shell: cat ~/.ssh/authorized_keys
+      become: no
+      changed_when: false
+      register: authorized_keys
+    - name: Create containers
+      community.general.lxc_container:
+        name: '{{ item.container_name }}'
+        state: started
+        template: debian
+        template_options: --packages=python3
+        container_config:
+          - lxc.net.0.hwaddr = {{ item.mac_address }}
+          - lxc.start.auto = 1
+          - lxc.mount.auto = sys:rw
+          - lxc.cgroup2.devices.allow = c 116:* rwm
+          - lxc.mount.entry = /dev/snd dev/snd none bind,optional,create=dir 0 0
+          - lxc.hook.pre-start = /usr/bin/bash -euo pipefail -c '[[ -e /sys/class/gpio/gpio{{ item.gpio }} ]] || echo {{ item.gpio }} > /sys/class/gpio/export; echo out > /sys/class/gpio/gpio{{ item.gpio }}/direction && echo 1 > /sys/class/gpio/gpio{{ item.gpio }}/value'
+          - lxc.hook-post-stop = /usr/bin/bash -euo pipefail -c 'echo 1 > /sys/class/gpio/gpio{{ item.gpio }}/value'
+        container_command: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh
+          chmod 0700 ~/.ssh
+          cat <<-'EOF' > ~/.ssh/authorized_keys
+          {{ authorized_keys.stdout }}
+          EOF
+      loop:
+        - name: Garage
+          container_name: shairport-garage
+          mac_address: 00:16:3e:3f:60:f5
+          device: 'hw:snd_usb_1_2'
+          gpio: 5
+        - name: Garten
+          container_name: shairport-garden
+          mac_address: 00:16:3e:3f:60:f6
+          device: 'hw:snd_usb_1_4'
+          gpio: 6
+      tags:
+        - build
+        - deploy
+      register: create_containers
+    - name: Add containers
+      add_host:
+        name: '{{ item.lxc_container.name }}'
+        ansible_user: root
+        ansible_host: '{{ item.lxc_container.ips[0] }}'
+        shairport_name: '{{ item.item.name }}'
+        shairport_device: '{{ item.item.device }}'
+        shairport_gpio: '{{ item.item.gpio }}'
+        groups:
+          - shairport_containers
+      loop: '{{ create_containers.results }}'
+- name: Set up shairport containers
+  hosts: shairport_containers
+  tasks:
+    - name: Get gpio group
+      stat:
+        path: /sys/class/gpio/gpio{{ shairport_gpio }}/value
+      register: gpio_group
+      when: shairport_gpio is defined
+    - name: Create gpio group
+      group:
+        name: gpio
+        gid: '{{ gpio_group["gid"] }}'
+      when: gpio_group["gid"] is defined
+    - name: Add shairport-sync user to gpio group
+      user:
+        name: shairport-sync
+        groups: gpio
+        append: yes
+      when: gpio_group["gid"] is defined
+    - name: Install shairport
+      include_role:
+        name: shairport
+      vars:
+        shairport_conf:
+          general:
+            name: '{{ shairport_name }}'
+            playback_mode: mono
+            volume_control_combined_hardware_priority: 'yes'
+          sessioncontrol:
+            run_this_before_entering_active_state: '/usr/bin/bash -c echo\ 0\ >\ /sys/class/gpio/gpio{{ shairport_gpio }}/value'
+            run_this_after_exiting_active_state: '/usr/bin/bash -c echo\ 1\ >\ /sys/class/gpio/gpio{{ shairport_gpio }}/value'
+            wait_for_completion: 'yes'
+          alsa:
+            output_device: '{{ shairport_device }}'
+            mixer_control_name: Speaker
+          diagnostics:
+            log_output_to: stderr
+            log_verbosity: 1

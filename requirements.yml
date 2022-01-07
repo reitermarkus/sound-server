@@ -1,0 +1,7 @@
+roles:
+  - name: jnv.unattended-upgrades
+  - name: whiskerlabs.watchdog
+
+collections:
+  - name: https://github.com/reitermarkus/ansible-collections.git
+    type: git

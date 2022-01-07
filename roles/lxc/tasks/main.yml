@@ -1,0 +1,55 @@
+---
+- name: Install dependencies
+  apt:
+    pkg:
+      - lxc
+      - python3-lxc
+    update_cache: yes
+- name: Disable lxc-net bridge
+  lineinfile:
+    regex: USE_LXC_BRIDGE=
+    line: USE_LXC_BRIDGE="false"
+    path: /etc/default/lxc-net
+- name: Create network bridge
+  copy:
+    content: |
+      auto lxcbr0
+      iface lxcbr0 inet dhcp
+        bridge_ports eth0
+        bridge_stp 0
+        bridge_fd 0
+        bridge_maxwait 0
+    dest: /etc/network/interfaces.d/lxc
+  register: lxc_bridge
+- name: Exclude interfaces from dhcpcd
+  lineinfile:
+    regex: denyinterfaces
+    insertafter: '^ *#.*dhcpcd\.conf\(5\)'
+    firstmatch: yes
+    line: denyinterfaces eth0 lxcbr0
+    path: /etc/dhcpcd.conf
+  register: dhcpcd_conf
+- name: Restart dhcpcd
+  service:
+    name: dhcpcd
+    state: restarted
+  when: dhcpcd_conf.changed
+- name: Restart network
+  service:
+    name: networking
+    state: restarted
+  when: lxc_bridge.changed
+- name: Create LXC keyring directory
+  file:
+    path: /var/cache/lxc/debian
+    state: directory
+- name: Add Debian 11 key to LXC keyring
+  ansible.builtin.apt_key:
+    id: 1F89983E0081FDE018F3CC9673A4F27B8DD47936
+    url: https://ftp-master.debian.org/keys/archive-key-11.asc
+    keyring: /var/cache/lxc/debian/archive-key.gpg
+- name: Add Debian 11 security key to LXC keyring
+  ansible.builtin.apt_key:
+    id: AC530D520F2F3269F5E98313A48449044AAD5C5D
+    url: https://ftp-master.debian.org/keys/archive-key-11-security.asc
+    keyring: /var/cache/lxc/debian/archive-key.gpg

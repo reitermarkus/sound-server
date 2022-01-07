@@ -1,0 +1,9 @@
+all:
+  hosts:
+    sound-server:
+      ansible_user: pi
+      ansible_host: sound-server.local
+  children:
+    raspberry_pi:
+      hosts:
+        sound-server:

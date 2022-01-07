@@ -1,0 +1,8 @@
+alac_repo: https://github.com/mikebrady/alac.git
+alac_branch: master
+
+nqptp_repo: https://github.com/mikebrady/nqptp.git
+nqptp_branch: development
+
+shairport_sync_repo: https://github.com/mikebrady/shairport-sync.git
+shairport_sync_branch: development

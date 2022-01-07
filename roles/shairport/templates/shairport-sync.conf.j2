@@ -1,0 +1,13 @@
+{{ ansible_managed | comment('c') }}
+// See shairport-sync.conf.sample for all available variables.
+//
+{% for group, variables in shairport_conf.items() %}
+
+{{ group }} = {
+  {%- for variable, value in variables.items() %}
+
+  {{ variable }} = {{ value | to_json }};
+  {%- endfor %}
+
+};
+{% endfor -%}
