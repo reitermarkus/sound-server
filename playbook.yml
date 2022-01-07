@@ -17,9 +17,26 @@
         - setup
     - name: Install LXC
       include_role:
-        name: lxc
+        name: reitermarkus.lxc.install
+      vars:
+        bridge_ports:
+          - eth0
       tags:
         - setup
+    - name: Create LXC keyring directory
+      file:
+        path: /var/cache/lxc/debian
+        state: directory
+    - name: Add Debian 11 key to LXC keyring
+      ansible.builtin.apt_key:
+        id: 1F89983E0081FDE018F3CC9673A4F27B8DD47936
+        url: https://ftp-master.debian.org/keys/archive-key-11.asc
+        keyring: /var/cache/lxc/debian/archive-key.gpg
+    - name: Add Debian 11 security key to LXC keyring
+      ansible.builtin.apt_key:
+        id: AC530D520F2F3269F5E98313A48449044AAD5C5D
+        url: https://ftp-master.debian.org/keys/archive-key-11-security.asc
+        keyring: /var/cache/lxc/debian/archive-key.gpg
     - name: Set up soundcard devices
       copy:
         content: |
@@ -115,7 +132,7 @@
       when: gpio_group["gid"] is defined
     - name: Install shairport
       include_role:
-        name: shairport
+        name: reitermarkus.shairport.install
       vars:
         shairport_conf:
           general:
