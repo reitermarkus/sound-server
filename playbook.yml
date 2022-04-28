@@ -105,6 +105,7 @@
         name: '{{ item.lxc_container.name }}'
         ansible_user: root
         ansible_host: '{{ item.lxc_container.ips[0] }}'
+        ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
         shairport_name: '{{ item.item.name }}'
         shairport_device: '{{ item.item.device }}'
         shairport_gpio: '{{ item.item.gpio }}'
