@@ -48,15 +48,15 @@
       file:
         path: /var/cache/lxc/debian
         state: directory
-    - name: Add Debian 11 key to LXC keyring
+    - name: Add Debian 12 key to LXC keyring
       ansible.builtin.apt_key:
         id: 1F89983E0081FDE018F3CC9673A4F27B8DD47936
-        url: https://ftp-master.debian.org/keys/archive-key-11.asc
+        url: https://ftp-master.debian.org/keys/archive-key-12.asc
         keyring: /var/cache/lxc/debian/archive-key.gpg
-    - name: Add Debian 11 security key to LXC keyring
+    - name: Add Debian 12 security key to LXC keyring
       ansible.builtin.apt_key:
         id: AC530D520F2F3269F5E98313A48449044AAD5C5D
-        url: https://ftp-master.debian.org/keys/archive-key-11-security.asc
+        url: https://ftp-master.debian.org/keys/archive-key-12-security.asc
         keyring: /var/cache/lxc/debian/archive-key.gpg
     - name: Get authorized_keys
       shell: cat ~/.ssh/authorized_keys
