@@ -117,7 +117,7 @@
   tasks:
     - name: Enable unattended upgrades
       include_role:
-        name: jnv.unattended-upgrades
+        name: hifis.toolkit.unattended_upgrades
     - name: Set time zone
       community.general.timezone:
         name: Europe/Vienna
